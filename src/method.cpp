@@ -2,53 +2,53 @@
 #include "method.h"
 
 // Turns a string method into an int
-int methodFromString(std::string method) {
+EHTTPMethod methodFromString(std::string method) {
 	if (method.compare("GET") == 0)
-		return METHOD_GET;
+		return k_EHTTPMethodGET;
 	if (method.compare("POST") == 0)
-		return METHOD_POST;
+		return k_EHTTPMethodPOST;
 	if (method.compare("HEAD") == 0)
-		return METHOD_HEAD;
+		return k_EHTTPMethodHEAD;
 	if (method.compare("PUT") == 0)
-		return METHOD_PUT;
+		return k_EHTTPMethodPUT;
 	if (method.compare("DELETE") == 0)
-		return METHOD_DELETE;
+		return k_EHTTPMethodDELETE;
 	if (method.compare("PATCH") == 0)
-		return METHOD_PATCH;
+		return k_EHTTPMethodPATCH;
 	if (method.compare("OPTIONS") == 0)
-		return METHOD_OPTIONS;
+		return k_EHTTPMethodOPTIONS;
 
-	return METHOD_NOSUPP;
+	return k_EHTTPMethodInvalid;
 }
 
 // Turns a method int back into a string
-std::string methodToString(int method) {
+std::string methodToString(EHTTPMethod method) {
 	switch (method) {
-	case METHOD_GET:
+	case k_EHTTPMethodGET:
 		return "GET";
-	case METHOD_POST:
+	case k_EHTTPMethodPOST:
 		return "POST";
-	case METHOD_HEAD:
+	case k_EHTTPMethodHEAD:
 		return "HEAD";
-	case METHOD_PUT:
+	case k_EHTTPMethodPUT:
 		return "PUT";
-	case METHOD_DELETE:
+	case k_EHTTPMethodDELETE:
 		return "DELETE";
-	case METHOD_PATCH:
+	case k_EHTTPMethodPATCH:
 		return "PATCH";
-	case METHOD_OPTIONS:
+	case k_EHTTPMethodOPTIONS:
 		return "OPTIONS";
 	default:
-		return "NOSUPP";
+		return "Invalid";
 	}
 }
 
-bool isLikePost(int method) {
+bool isLikePost(EHTTPMethod method) {
 	switch (method) {
-	case METHOD_POST:
-	case METHOD_PUT:
-	case METHOD_DELETE:
-	case METHOD_PATCH:
+	case k_EHTTPMethodPOST:
+	case k_EHTTPMethodPUT:
+	case k_EHTTPMethodDELETE:
+	case k_EHTTPMethodPATCH:
 		return true;
 	default:
 		return false;
