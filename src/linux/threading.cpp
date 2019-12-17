@@ -1,5 +1,5 @@
 #include <pthread.h>
-#include "../chttp.h"
+#include "../steamhttp.h"
 #include "../threading.h"
 
 pthread_t thread;

@@ -1,6 +1,6 @@
 #include <string>
 #include <curl/curl.h>
-#include "chttp.h"
+#include "steamhttp.h"
 #include "method.h"
 #include "lua.h"
 #include "threading.h"
@@ -16,8 +16,8 @@ std::string buildUserAgent() {
 	user += " curl/";
 	user += info->version;
 
-	user += " gmod-chttp/";
-	user += CHTTP_VERSION;
+	user += " gmod-steamhttp/";
+	user += STEAMHTTP_VERSION;
 
 	return user;
 }
@@ -191,7 +191,7 @@ cleanup:
  * The function takes a single table argument, based off the HTTPRequest structure.
  * It returns a boolean whether a request was sent or not.
  */
-LUA_FUNCTION(CHTTP) {
+LUA_FUNCTION(STEAMHTTP) {
 	HTTPRequest request = HTTPRequest();
 	bool ret;
 
@@ -295,8 +295,8 @@ GMOD_MODULE_OPEN() {
 
 	// Push the function mapping (first is the key/function name,
 	// second is the value/actual function)
-	LUA->PushString("CHTTP");
-	LUA->PushCFunction(CHTTP);
+	LUA->PushString("STEAMHTTP");
+	LUA->PushCFunction(STEAMHTTP);
 
 	// SetTable takes the item at the top of the stack (value) and
 	// the second item from the top (key) and adds them to the table
@@ -310,7 +310,7 @@ GMOD_MODULE_OPEN() {
 
 	// Push the new hook data
 	LUA->PushString("Think");
-	LUA->PushString("__chttpThinkHook");
+	LUA->PushString("__steamhttpThinkHook");
 	LUA->PushCFunction(threadingDoThink);
 
 	// Add the hook

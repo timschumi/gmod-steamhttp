@@ -48,7 +48,7 @@ void printMessage(Lua::ILuaBase *LUA, std::string message) {
 	LUA->GetField(-1, "print");
 
 	// Pushes the argument to the stack
-	LUA->PushString(("[CHTTP] " + message).c_str());
+	LUA->PushString(("[STEAMHTTP] " + message).c_str());
 
 	// Calls the function (arg1 = number of arguments, arg2 = number of return values).
 	// The function is the top of the stack after arguments have been popped.

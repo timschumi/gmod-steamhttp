@@ -1,5 +1,5 @@
 #include <windows.h>
-#include "../chttp.h"
+#include "../steamhttp.h"
 #include "../threading.h"
 
 HANDLE hThread;

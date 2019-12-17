@@ -1,5 +1,5 @@
 #include <GarrysMod/Lua/Interface.h>
-#include "chttp.h"
+#include "steamhttp.h"
 #include "threading.h"
 
 using namespace GarrysMod;
