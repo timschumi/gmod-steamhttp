@@ -7,21 +7,6 @@
 
 using namespace GarrysMod;
 
-std::string buildUserAgent() {
-	std::string user = "";
-	curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
-
-	user += "User-Agent:";
-
-	user += " curl/";
-	user += info->version;
-
-	user += " gmod-steamhttp/";
-	user += STEAMHTTP_VERSION;
-
-	return user;
-}
-
 void runFailedHandler(Lua::ILuaBase *LUA, int handler, std::string reason) {
 	if (!handler)
 		return;
@@ -56,10 +41,6 @@ void runSuccessHandler(Lua::ILuaBase *LUA, int handler, HTTPResponse response) {
 
 void curlAddHeaders(CURL *curl, HTTPRequest request) {
 	struct curl_slist *headers = NULL;
-
-	// Check if we have to add the default User-Agent
-	if (request.headers.count("User-Agent") == 0)
-		headers = curl_slist_append(headers, buildUserAgent().c_str());
 
 	// Add the Content-Type header if not already set
 	if (request.headers.count("Content-Type") == 0)
