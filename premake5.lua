@@ -14,7 +14,17 @@ local target_suffixes_64 = {
 	macosx    = "_osx64",
 }
 
-solution "chttp"
+local libdirs_86 = {
+	linux     = "steamworks/lib/linux32",
+	windows   = "steamworks/lib/win32"
+}
+
+local libdirs_64 = {
+	linux     = "steamworks/lib/linux64",
+	windows   = "steamworks/lib/win64"
+}
+
+solution "steamhttp"
 	language		"C++"
 	location		"project"
 
@@ -43,19 +53,26 @@ solution "chttp"
 		architecture "x86_64"
 		targetsuffix ( target_suffixes_64[os.target()] )
 
-	project "chttp"
+	project "steamhttp"
 		kind	"SharedLib"
 		targetprefix "gmsv_"
 		targetextension ".dll"
-		includedirs { "curl/include/", "gmod-module-base/include/" }
+		includedirs { "steamworks/include/", "gmod-module-base/include/" }
 		files { "src/*.cpp", "src/*.h", "src/"..os.target().."/*.cpp", "src/"..os.target().."/*.h" }
+
+		filter "platforms:x64"
+			libdirs {libdirs_64[os.target()]}
+		filter "platforms:x86"
+			libdirs {libdirs_86[os.target()]}
+
+
 		if os.target() == "windows" then
 		    defines { "WINDOWS_BUILD" }
-		    libdirs {"curl/lib"}
 			filter "platforms:x64"
-				links {"libcurl-x64"}
+				links {"steam_api64"}
 			filter "platforms:x86"
-				links {"libcurl"}
+				links {"steam_api"}
 		else
-		    links {"curl"}
+			links {"steam_api"}
 		end
+
