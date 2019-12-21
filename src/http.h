@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include "isteamhttp.h"
 #include <GarrysMod/Lua/LuaBase.h>
 
 // Modeled after GMod's HTTPRequest structure
@@ -16,9 +17,8 @@ struct HTTPRequest {
 	// This is a reference to the function on the stack
 	int success;
 
-	// Request method (GET = 1, POST = 2, etc.)
-	// See method.{h,c} for details.
-	int method;
+	// See the Steamworks EHTTPMethod documentation for details.
+	EHTTPMethod method;
 
 	// Well, what could that be?
 	std::string url;
