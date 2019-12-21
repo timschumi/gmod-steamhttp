@@ -1,5 +1,7 @@
 #include <string>
+#include <vector>
 #include "isteamhttp.h"
+#include "isteamutils.h"
 #include "steamhttp.h"
 #include "method.h"
 #include "lua.h"
@@ -39,11 +41,53 @@ void runSuccessHandler(Lua::ILuaBase *LUA, int handler, HTTPResponse response) {
 	LUA->Call(3, 0);
 }
 
+/*
+ * Blocks until the API Call completes and returns whether
+ * the call succeeded.
+ */
+bool waitForAPICall(SteamAPICall_t hSteamAPICall) {
+	bool failed = true;
+
+	while (!SteamUtils()->IsAPICallCompleted(hSteamAPICall, &failed));
+
+	return !failed;
+}
+
+bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPResponse *response, std::string failreason) {
+	bool failed = true;
+	HTTPRequestCompleted_t reqcomplete;
+
+	if (!SteamUtils()->GetAPICallResult(apicall, &reqcomplete, sizeof(reqcomplete), reqcomplete.k_iCallback, &failed)) {
+		failreason.assign("Could not fetch API Call Result.");
+		return false;
+	}
+
+	if (failed) {
+		failreason.assign("API Call failed.");
+		return false;
+	}
+
+	if (!reqcomplete.m_bRequestSuccessful) {
+		failreason.assign("HTTP Request was unsuccessful");
+		return false;
+	}
+
+	response->code = reqcomplete.m_eStatusCode;
+
+	// Initialize char* with correct size and copy it over
+	std::vector<uint8> buffer(reqcomplete.m_unBodySize);
+	SteamHTTP()->GetHTTPResponseBodyData(request, &buffer[0], reqcomplete.m_unBodySize); 
+	response->body = std::string(buffer.begin(), buffer.end());
+
+	return true;
+}
+
 bool processRequest(HTTPRequest request) {
 	HTTPRequestHandle reqhandle;
-	SteamAPICall_t *apihandle;
+	SteamAPICall_t apicall;
 	bool ret = true;
 	HTTPResponse response = HTTPResponse();
+	std::string failreason = "";
 
 	reqhandle = SteamHTTP()->CreateHTTPRequest(request.method, buildUrl(request).c_str());
 
@@ -53,8 +97,25 @@ bool processRequest(HTTPRequest request) {
 		goto cleanup;
 	}
 
-	if (!SteamHTTP()->SendHTTPRequest(reqhandle, apihandle)) {
+	if (!SteamHTTP()->SendHTTPRequest(reqhandle, &apicall)) {
 		failed.push({request.failed, "Failure while sending HTTP request."});
+		ret = false;
+		goto cleanup;
+	}
+
+	// HACK: Block until the request returns. processRequest() usually runs in a threaded
+	// context, so this shouldn't be an issue.
+	// I should really figure out though if I can fully remove the threading and put
+	// everything into the Think-Hook then.
+	if (!waitForAPICall(apicall)) {
+		failed.push({request.failed, "API Error: " +
+		                             SteamUtils()->GetAPICallFailureReason(apicall)});
+		ret = false;
+		goto cleanup;
+	}
+
+	if (!createHTTPResponse(reqhandle, apicall, &response, failreason)) {
+		failed.push({request.failed, "HTTP Error: " + failreason});
 		ret = false;
 		goto cleanup;
 	}
