@@ -41,6 +41,7 @@ void runSuccessHandler(Lua::ILuaBase *LUA, int handler, HTTPResponse response) {
 
 bool processRequest(HTTPRequest request) {
 	HTTPRequestHandle reqhandle;
+	SteamAPICall_t *apihandle;
 	bool ret = true;
 	HTTPResponse response = HTTPResponse();
 
@@ -52,7 +53,7 @@ bool processRequest(HTTPRequest request) {
 		goto cleanup;
 	}
 
-	if (!SteamHTTP->SendHTTPRequest(reqhandle, SteamAPICall_t *pCallHandle)) {
+	if (!SteamHTTP()->SendHTTPRequest(reqhandle, apihandle)) {
 		failed.push({request.failed, "Failure while sending HTTP request."});
 		ret = false;
 		goto cleanup;
@@ -61,8 +62,8 @@ bool processRequest(HTTPRequest request) {
 	success.push({request.success, response});
 
 cleanup:
-	if (handle != INVALID_HTTPREQUEST_HANDLE)
-		SteamHTTP()->ReleaseHTTPRequest(handle);
+	if (reqhandle != INVALID_HTTPREQUEST_HANDLE)
+		SteamHTTP()->ReleaseHTTPRequest(reqhandle);
 
 	return ret;
 }
