@@ -3,7 +3,6 @@
 #include "isteamhttp.h"
 #include "isteamutils.h"
 #include "steamhttp.h"
-#include "method.h"
 #include "lua.h"
 #include "threading.h"
 
@@ -39,6 +38,26 @@ void runSuccessHandler(Lua::ILuaBase *LUA, int handler, HTTPResponse response) {
 
 	// Call the success handler with three arguments
 	LUA->Call(3, 0);
+}
+
+// Turns a string method into an int
+EHTTPMethod methodFromString(std::string method) {
+	if (method.compare("GET") == 0)
+		return k_EHTTPMethodGET;
+	if (method.compare("POST") == 0)
+		return k_EHTTPMethodPOST;
+	if (method.compare("HEAD") == 0)
+		return k_EHTTPMethodHEAD;
+	if (method.compare("PUT") == 0)
+		return k_EHTTPMethodPUT;
+	if (method.compare("DELETE") == 0)
+		return k_EHTTPMethodDELETE;
+	if (method.compare("PATCH") == 0)
+		return k_EHTTPMethodPATCH;
+	if (method.compare("OPTIONS") == 0)
+		return k_EHTTPMethodOPTIONS;
+
+	return k_EHTTPMethodInvalid;
 }
 
 /*
@@ -109,7 +128,7 @@ bool processRequest(HTTPRequest request) {
 	HTTPResponse response = HTTPResponse();
 	std::string failreason = "";
 
-	reqhandle = SteamHTTP()->CreateHTTPRequest(request.method, buildUrl(request).c_str());
+	reqhandle = SteamHTTP()->CreateHTTPRequest(request.method, request.url.c_str());
 
 	if (reqhandle == INVALID_HTTPREQUEST_HANDLE) {
 		failed.push({request.failed, "Failed to init request handle!"});
@@ -118,6 +137,14 @@ bool processRequest(HTTPRequest request) {
 	}
 
 	addHeaders(reqhandle, request);
+
+	// Adding body (if available)
+	if (request.body.size() != 0)
+		SteamHTTP()->SetHTTPRequestRawPostBody(reqhandle, request.type.c_str(), std::vector<uint8>(request.body.begin(), request.body.end()).data(), request.body.size());
+
+	// Adding parameters
+	for (auto const& e : request.parameters)
+		SteamHTTP()->SetHTTPRequestGetOrPostParameter(reqhandle, e.first.c_str(), e.second.c_str());
 
 	if (!SteamHTTP()->SendHTTPRequest(reqhandle, &apicall)) {
 		failed.push({request.failed, "Failure while sending HTTP request."});
