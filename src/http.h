@@ -34,6 +34,9 @@ struct HTTPRequest {
 
 	// Content-Type string for the request body.
 	std::string type;
+
+	// Append value for the User-Agent
+	std::string useragent;
 };
 
 // Not really modeled after anything specific

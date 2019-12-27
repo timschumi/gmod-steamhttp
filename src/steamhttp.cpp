@@ -76,10 +76,30 @@ bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPR
 
 	// Initialize char* with correct size and copy it over
 	std::vector<uint8> buffer(reqcomplete.m_unBodySize);
-	SteamHTTP()->GetHTTPResponseBodyData(request, &buffer[0], reqcomplete.m_unBodySize); 
+	SteamHTTP()->GetHTTPResponseBodyData(request, &buffer[0], reqcomplete.m_unBodySize);
 	response->body = std::string(buffer.begin(), buffer.end());
 
+	// I can't query the list of sent headers to retrieve them,
+	// so the array will stay empty.
+
 	return true;
+}
+
+void addHeaders(HTTPRequestHandle handle, HTTPRequest request) {
+	// Check if we have to append something to the User-Agent
+	// The `useragent` parameter overwrites the header
+	if (request.useragent.size() != 0)
+		SteamHTTP()->SetHTTPRequestUserAgentInfo(handle, request.useragent.c_str());
+	else if (request.headers.count("User-Agent") != 0)
+		SteamHTTP()->SetHTTPRequestUserAgentInfo(handle, request.headers["User-Agent"].c_str());
+
+	// Add the Content-Type header if not already set
+	if (request.headers.count("Content-Type") == 0)
+		SteamHTTP()->SetHTTPRequestHeaderValue(handle, "Content-Type", request.type.c_str());
+
+	// Add all the headers from the request struct
+	for (auto const& e : request.headers)
+		SteamHTTP()->SetHTTPRequestHeaderValue(handle, e.first.c_str(), e.second.c_str());
 }
 
 bool processRequest(HTTPRequest request) {
@@ -96,6 +116,8 @@ bool processRequest(HTTPRequest request) {
 		ret = false;
 		goto cleanup;
 	}
+
+	addHeaders(reqhandle, request);
 
 	if (!SteamHTTP()->SendHTTPRequest(reqhandle, &apicall)) {
 		failed.push({request.failed, "Failure while sending HTTP request."});
@@ -212,6 +234,13 @@ LUA_FUNCTION(STEAMHTTP) {
 	LUA->GetField(1, "body");
 	if (LUA->IsType(-1, Lua::Type::STRING)) {
 		request.body = LUA->GetString(-1);
+	}
+	LUA->Pop();
+
+	// Fetch useragent
+	LUA->GetField(1, "useragent");
+	if (LUA->IsType(-1, Lua::Type::STRING)) {
+		request.useragent = LUA->GetString(-1);
 	}
 	LUA->Pop();
 
