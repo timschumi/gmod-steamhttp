@@ -1,7 +1,6 @@
 #include <string>
 #include <vector>
-#include "isteamhttp.h"
-#include "isteamutils.h"
+#include "steam_api.h"
 #include "steamhttp.h"
 #include "lua.h"
 #include "threading.h"
@@ -279,6 +278,10 @@ exit:
 }
 
 GMOD_MODULE_OPEN() {
+	// Initialize the SteamAPI
+	if (!SteamAPI_Init())
+		LOG("Warning: SteamAPI did not initialize correctly! This might cause issues!");
+
 	// We are working on the global table today
 	LUA->PushSpecial(Lua::SPECIAL_GLOB);
 
