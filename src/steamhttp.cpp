@@ -95,22 +95,22 @@ EHTTPMethod methodFromString(std::string method) {
 	return k_EHTTPMethodInvalid;
 }
 
-bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPResponse *response, std::string failreason) {
+bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPResponse *response, std::string *failreason) {
 	bool failed = true;
 	HTTPRequestCompleted_t reqcomplete;
 
 	if (!SteamUtils()->GetAPICallResult(apicall, &reqcomplete, sizeof(reqcomplete), reqcomplete.k_iCallback, &failed)) {
-		failreason.assign("Could not fetch API Call Result.");
+		failreason->assign("Could not fetch API Call Result.");
 		return false;
 	}
 
 	if (failed) {
-		failreason.assign("API Call failed.");
+		failreason->assign("API Call failed.");
 		return false;
 	}
 
 	if (!reqcomplete.m_bRequestSuccessful) {
-		failreason.assign("HTTP Request was unsuccessful");
+		failreason->assign("HTTP Request was unsuccessful");
 		return false;
 	}
 
@@ -212,7 +212,7 @@ LUA_FUNCTION(callbackHook) {
 	HTTPResponse response = HTTPResponse();
 	std::string failreason = "";
 
-	if (!createHTTPResponse(queued.reqhandle, queued.apicall, &response, failreason)) {
+	if (!createHTTPResponse(queued.reqhandle, queued.apicall, &response, &failreason)) {
 		runFailedHandler(LUA, queued.request.failed, "HTTP Error: " + failreason);
 		SteamHTTP()->ReleaseHTTPRequest(queued.reqhandle);
 		return 0;
