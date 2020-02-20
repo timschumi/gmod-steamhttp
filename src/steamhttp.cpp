@@ -7,6 +7,40 @@
 
 using namespace GarrysMod;
 
+std::string HEADERS[] = {
+	"Connection",
+	"Content-Encoding",
+	"Content-Type",
+	"Date",
+	"Transfer-Encoding",
+	"Vary",
+	"Cache-Control",
+	"Expires",
+	"Get-Dictionary",
+	"Pragma",
+	"Set-Cookie",
+	"X-Powered-By",
+	"X-UA-Compatible",
+	"Allow",
+	"Last-Modified",
+	"Refresh",
+	"Warning",
+	"Access-Control-Allow-Origin",
+	"Accept-Ranges",
+	"Content-Range",
+	"Content-Location",
+	"Content-MD5",
+	"Content-Length",
+	"Retry-After",
+	"X-RateLimit-Limit",
+	"X-RateLimit-Remaining",
+	"X-RateLimit-Reset",
+	"X-Rate-Limit-Limit",
+	"X-Rate-Limit-Remaining",
+	"X-Rate-Limit-Reset",
+	"ETag",
+};
+
 void runFailedHandler(Lua::ILuaBase *LUA, int handler, std::string reason) {
 	if (!handler)
 		return;
@@ -97,8 +131,20 @@ bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPR
 	SteamHTTP()->GetHTTPResponseBodyData(request, &buffer[0], reqcomplete.m_unBodySize);
 	response->body = std::string(buffer.begin(), buffer.end());
 
-	// I can't query the list of sent headers to retrieve them,
-	// so the array will stay empty.
+	for (std::string header : HEADERS) {
+		uint32 headersize;
+
+		if (!SteamHTTP()->GetHTTPResponseHeaderSize(request, header.c_str(), &headersize)
+		    || headersize <= 0)
+			continue;
+
+		std::vector<uint8> headerbuf(headersize);
+
+		if (!SteamHTTP()->GetHTTPResponseHeaderValue(request, header.c_str(), &headerbuf[0], headersize))
+			continue;
+
+		response->headers[header] = std::string(headerbuf.begin(), headerbuf.end());
+	}
 
 	return true;
 }
