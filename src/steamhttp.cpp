@@ -2,8 +2,8 @@
 #include <vector>
 #include "steam_api.h"
 #include "steamhttp.h"
+#include "lockqueue.h"
 #include "lua.h"
-#include "threading.h"
 
 using namespace GarrysMod;
 
@@ -40,6 +40,8 @@ std::string HEADERS[] = {
 	"X-Rate-Limit-Reset",
 	"ETag",
 };
+
+LockableQueue<QueuedRequestData> requests;
 
 void runFailedHandler(Lua::ILuaBase *LUA, int handler, std::string reason) {
 	if (!handler)
@@ -91,18 +93,6 @@ EHTTPMethod methodFromString(std::string method) {
 		return k_EHTTPMethodOPTIONS;
 
 	return k_EHTTPMethodInvalid;
-}
-
-/*
- * Blocks until the API Call completes and returns whether
- * the call succeeded.
- */
-bool waitForAPICall(SteamAPICall_t hSteamAPICall) {
-	bool failed = true;
-
-	while (!SteamUtils()->IsAPICallCompleted(hSteamAPICall, &failed));
-
-	return !failed;
 }
 
 bool createHTTPResponse(HTTPRequestHandle request, SteamAPICall_t apicall, HTTPResponse *response, std::string failreason) {
@@ -166,19 +156,15 @@ void addHeaders(HTTPRequestHandle handle, HTTPRequest request) {
 		SteamHTTP()->SetHTTPRequestHeaderValue(handle, e.first.c_str(), e.second.c_str());
 }
 
-bool processRequest(HTTPRequest request) {
+bool processRequest(Lua::ILuaBase *LUA, HTTPRequest request) {
 	HTTPRequestHandle reqhandle;
 	SteamAPICall_t apicall;
-	bool ret = true;
-	HTTPResponse response = HTTPResponse();
-	std::string failreason = "";
 
 	reqhandle = SteamHTTP()->CreateHTTPRequest(request.method, request.url.c_str());
 
 	if (reqhandle == INVALID_HTTPREQUEST_HANDLE) {
-		failed.push({request.failed, "Failed to init request handle!"});
-		ret = false;
-		goto cleanup;
+		runFailedHandler(LUA, request.failed, "Failed to init request handle!");
+		return false;
 	}
 
 	addHeaders(reqhandle, request);
@@ -192,35 +178,49 @@ bool processRequest(HTTPRequest request) {
 		SteamHTTP()->SetHTTPRequestGetOrPostParameter(reqhandle, e.first.c_str(), e.second.c_str());
 
 	if (!SteamHTTP()->SendHTTPRequest(reqhandle, &apicall)) {
-		failed.push({request.failed, "Failure while sending HTTP request."});
-		ret = false;
-		goto cleanup;
-	}
-
-	// HACK: Block until the request returns. processRequest() usually runs in a threaded
-	// context, so this shouldn't be an issue.
-	// I should really figure out though if I can fully remove the threading and put
-	// everything into the Think-Hook then.
-	if (!waitForAPICall(apicall)) {
-		failed.push({request.failed, "API Error: " +
-		                             SteamUtils()->GetAPICallFailureReason(apicall)});
-		ret = false;
-		goto cleanup;
-	}
-
-	if (!createHTTPResponse(reqhandle, apicall, &response, failreason)) {
-		failed.push({request.failed, "HTTP Error: " + failreason});
-		ret = false;
-		goto cleanup;
-	}
-
-	success.push({request.success, response});
-
-cleanup:
-	if (reqhandle != INVALID_HTTPREQUEST_HANDLE)
+		runFailedHandler(LUA, request.failed, "Failure while sending HTTP request.");
 		SteamHTTP()->ReleaseHTTPRequest(reqhandle);
+		return false;
+	}
 
-	return ret;
+	requests.push({request, reqhandle, apicall});
+
+	return true;
+}
+
+// At the moment, this is handling one request per tick.
+LUA_FUNCTION(callbackHook) {
+	if (requests.empty())
+		return 0;
+
+	QueuedRequestData queued = requests.pop();
+	bool failed = true;
+
+	// If this isn't done, push back onto the queue and stop
+	if (!SteamUtils()->IsAPICallCompleted(queued.apicall, &failed)) {
+		requests.push(queued);
+		return 0;
+	}
+
+	if (failed) {
+		runFailedHandler(LUA, queued.request.failed,
+		                 "API Error: " + SteamUtils()->GetAPICallFailureReason(queued.apicall));
+		SteamHTTP()->ReleaseHTTPRequest(queued.reqhandle);
+		return 0;
+	}
+
+	HTTPResponse response = HTTPResponse();
+	std::string failreason = "";
+
+	if (!createHTTPResponse(queued.reqhandle, queued.apicall, &response, failreason)) {
+		runFailedHandler(LUA, queued.request.failed, "HTTP Error: " + failreason);
+		SteamHTTP()->ReleaseHTTPRequest(queued.reqhandle);
+		return 0;
+        }
+
+	runSuccessHandler(LUA, queued.request.success, response);
+
+	return 0;
 }
 
 /*
@@ -316,7 +316,7 @@ LUA_FUNCTION(STEAMHTTP) {
 	}
 	LUA->Pop();
 
-	ret = scheduleRequest(request);
+	ret = processRequest(LUA, request);
 
 exit:
 	LUA->PushBool(ret); // Push result to the stack
@@ -348,8 +348,8 @@ GMOD_MODULE_OPEN() {
 
 	// Push the new hook data
 	LUA->PushString("Think");
-	LUA->PushString("__steamhttpThinkHook");
-	LUA->PushCFunction(threadingDoThink);
+	LUA->PushString("__steamhttpCallback");
+	LUA->PushCFunction(callbackHook);
 
 	// Add the hook
 	LUA->Call(3, 0);

@@ -58,7 +58,7 @@ solution "steamhttp"
 		targetprefix "gmsv_"
 		targetextension ".dll"
 		includedirs { "steamworks/include/", "gmod-module-base/include/" }
-		files { "src/*.cpp", "src/*.h", "src/"..os.target().."/*.cpp", "src/"..os.target().."/*.h" }
+		files { "src/*.cpp", "src/*.h" }
 
 		filter "platforms:x64"
 			libdirs {libdirs_64[os.target()]}
