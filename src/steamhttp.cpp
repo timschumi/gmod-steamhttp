@@ -325,8 +325,10 @@ exit:
 
 GMOD_MODULE_OPEN() {
 	// Initialize the SteamAPI
-	if (!SteamAPI_Init())
-		LOG("Warning: SteamAPI did not initialize correctly! This might cause issues!");
+	if (!SteamAPI_Init()) {
+		LUA->ThrowError("SteamAPI did not initialize correctly! STEAMHTTP will not be available!");
+		return 0;
+	}
 
 	// We are working on the global table today
 	LUA->PushSpecial(Lua::SPECIAL_GLOB);
