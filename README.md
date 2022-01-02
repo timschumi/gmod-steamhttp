@@ -1,3 +1,10 @@
+**WARNING:** This project is deprecated. It rarely works, has been out of date
+for a long time, and now that [CHTTP](https://github.com/timschumi/gmod-chttp)
+does not require manually installing dependencies anymore, there is no need to
+start maintaining this again. The repository and its releases will stay
+publicly accessible, but unless you have a _really good_ reason for it, you
+should use CHTTP instead.
+
 # gmod-steamhttp
 
 This project aims to provide an open-source drop-in replacement for GMod's
